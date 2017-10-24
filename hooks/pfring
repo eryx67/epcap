@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+export DESTDIR="$REBAR_DEPS_DIR/epcap/priv/pfring"
+
+[ -z "$PFRING" ] && exit 0
+
+case "$1" in
+    "compile")
+        [ -f "$DESTDIR/usr/local/lib/libpcap.a" ] && exit 0
+        make -C "$REBAR_DEPS_DIR/pfring/userland"
+        make -C "$REBAR_DEPS_DIR/pfring/userland/lib" install
+        make -C "$REBAR_DEPS_DIR/pfring/userland/libpcap" install
+        make -C "$REBAR_DEPS_DIR/pfring/kernel"
+        sudo make -C "$REBAR_DEPS_DIR/pfring/kernel" install
+        ;;
+    "clean")
+        make -C "$REBAR_DEPS_DIR/pfring/userland" clean
+        make -C "$REBAR_DEPS_DIR/pfring/kernel" clean
+        rm -rf "$DESTDIR"
+        ;;
+    *)
+        echo "Usage: $0 compile|clean"
+        exit 1
+        ;;
+esac
+
+exit 0

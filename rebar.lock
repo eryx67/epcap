@@ -1,4 +1,8 @@
-[{<<"pkt">>,
+[{<<"pfring">>,
+  {raw,"https://github.com/ntop/PF_RING.git",
+       {mod_ref,git,{ref,"96e916d6f2e3017cff1c8f0d44657b946030d6ce"},[]}},
+  0},
+ {<<"pkt">>,
   {git,"https://github.com/msantos/pkt.git",
-       {ref,"a81fe923d027133d338b060e70e4cddd851ed362"}},
+       {ref,"6d5e47f02ba25d39d428dc576aab9cc56cd69c58"}},
   0}].

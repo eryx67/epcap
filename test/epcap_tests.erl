@@ -40,15 +40,17 @@ epcap_test_() ->
     % mode for outgoing packets to be captured
     {ok, Ref} = epcap:start(epcap_dev() ++ [
             {exec, os:getenv("EPCAP_TEST_EXEC", "sudo -n")},
+            {cluster_id, 2},
+            verbose,
             inject,
             {filter, "tcp and ( port 29 or port 39 )"},
             promiscuous
         ]),
 
     {timeout, 480, [
-            {?LINE, fun() -> epcap_filter(Ref) end},
-            {?LINE, fun() -> epcap_send(Ref) end}
-        ]}.
+            {timeout, 60, {?LINE, fun() -> epcap_filter(Ref) end}},
+            {timeout, 60, {?LINE, fun() -> epcap_send(Ref) end}}
+                   ]}.
 
 epcap_dev() ->
     case os:getenv("EPCAP_TEST_INTERFACE") of
@@ -57,6 +59,10 @@ epcap_dev() ->
     end.
 
 epcap_filter(_Ref) ->
+    receive
+    after 5000 ->
+            ok
+    end,
     {error, timeout} = gen_tcp:connect({8,8,8,8}, 29, [binary], 2000),
 
     receive
@@ -67,7 +73,9 @@ epcap_filter(_Ref) ->
                     {length, Length},
                     {packet, Packet}
                 ]),
-            [#ether{}, #ipv4{}, #tcp{dport = 29}, _Payload] = pkt:decapsulate(Packet)
+            [#ether{}, #ipv4{}, #tcp{dport = 29}, _Payload] = pkt:decapsulate(Packet);
+        Msg ->
+            ?debugVal(Msg)
     end.
 
 epcap_send(Ref) ->

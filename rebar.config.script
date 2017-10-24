@@ -1,10 +1,21 @@
 TMPDIR = os:getenv("TMPDIR", "/tmp"),
 
+PFRING_DIR = "priv/pfring/usr/local",
+PFRING_LIB_DIR = filename:absname(filename:join(PFRING_DIR, "lib")),
+PFRING_INC_DIR = filename:absname(filename:join(PFRING_DIR, "include")),
+
 Compile = fun(Name0, Prog) ->
     Name = filename:join(TMPDIR, Name0),
     ok = file:write_file(Name, Prog, [write, exclusive]),
-    Cmd = erlang:open_port({spawn, ["${CC-cc} -o /dev/null ", Name, " -lpcap"]},
-            [stream, exit_status]),
+    Cmd = case os:getenv("PFRING") of
+              false ->
+                  erlang:open_port({spawn, ["${CC-cc} -o /dev/null ", Name, " -lpcap"]},
+                                   [stream, exit_status]);
+              _ ->
+                  erlang:open_port({spawn, ["${CC-cc} -o /dev/null ", Name,
+                                    " -I", PFRING_INC_DIR, " -L", PFRING_LIB_DIR, " -lpcap"]},
+                                   [stream, exit_status])
+          end,
     Status = receive
         {Cmd, {exit_status, 0}} ->
             true;
@@ -38,20 +49,22 @@ end,
 %% Tests
 %%
 
-PFRING = fun(Config) -> case os:getenv("PFRING") of
-    false ->
-        ok;
-    Value ->
-        case filelib:is_dir(Value) of
-            true ->
-                LDFLAGS = os:getenv("EPCAP_LDFLAGS", ""),
-                true = Setenv("EPCAP_LDFLAGS", "-L" ++ Value);
-            _ ->
-                ok
-        end
-    end,
-    Config
-end,
+PFRING = fun(Config) ->
+                 case os:getenv("PFRING") of
+                     false ->
+                         true = Setenv("EPCAP_LDFLAGS", "-lpcap");
+                     _ ->
+                         true = Setenv("EPCAP_LDFLAGS",
+                                       string:join([filename:join(PFRING_LIB_DIR, "libpcap.a"),
+                                                    filename:join(PFRING_LIB_DIR, "libpfring.a"),
+                                                    "-lpthread -ldl"
+                                                   ], " ")),
+                         true = Setenv("EPCAP_CFLAGS",
+                                       "-I" ++ PFRING_INC_DIR
+                                      ++ " -DHAVE_PF_RING -DENABLE_BPF -DHAVE_PF_RING_ZC")
+                 end,
+                 Config
+         end,
 
 Pcap_create = fun(Config) ->
     Check = "

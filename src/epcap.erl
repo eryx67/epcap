@@ -89,7 +89,25 @@ init([Pid, Options]) ->
                 Options1
             ), ".")),
     Cmd = string:join(getopts(Options1), " "),
-    Port = open_port({spawn, Cmd}, [{packet, 2}, binary, exit_status]),
+
+    PfringLibPath = filename:join([basedir(), "pfring", "usr", "local", "lib"]),
+    LibPathName = "LD_LIBRARY_PATH",
+    LibPathVal =
+        case os:getenv(LibPathName) of
+            false ->
+                PfringLibPath;
+            V ->
+                PfringLibPath ++ ":" ++ V
+        end,
+    Env = proplists:get_value(env, Options, []),
+
+    os:cmd("sudo -n modprobe pf_ring"),
+
+    Port = open_port({spawn, Cmd}, [{packet, 2},
+                                    binary,
+                                    exit_status,
+                                    {env, [{LibPathName, LibPathVal} | Env]}
+                                   ]),
     {ok, #state{pid = Pid, port = Port}}.
 
 handle_call({send, Packet}, _From, #state{port = Port} = State) ->
@@ -195,14 +213,14 @@ quote(Str) ->
 basedir() ->
     case code:priv_dir(?MODULE) of
         {error, bad_name} ->
-            filename:join([
-                filename:dirname(code:which(?MODULE)),
-                "..",
-                "priv",
-                ?MODULE
-            ]);
+            filename:absname(filename:join([
+                                            filename:dirname(code:which(?MODULE)),
+                                            "..",
+                                            "priv",
+                                            ?MODULE
+                                           ]));
         Dir ->
-            Dir
+            filename:absname(Dir)
     end.
 
 -spec progname() -> string().

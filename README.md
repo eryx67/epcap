@@ -1,3 +1,10 @@
+This version is only different in driver compilation with [PF_RING](https://github.com/ntop/PF_RING).
+
+When shell variable `PFRING` is set it is compiled statically with
+`libpfring` to avoid conflicts with system libraries.
+
+User must have `sudo` privileges.
+
 An Erlang port interface to libpcap.
 
 epcap includes a small example program called sniff.
